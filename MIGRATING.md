@@ -4,6 +4,33 @@ This guide describes the steps to upgrade dd-trace from a major version to the
 next. If you are having any issues related to migrating, please feel free to
 open an issue or contact our [support](https://www.datadoghq.com/support/) team.
 
+## 5.0 to 6.0
+
+### `experimental.b3` removed
+
+The `experimental.b3` programmatic flag and `DD_TRACE_EXPERIMENTAL_B3_ENABLED`
+env var are gone. Configure b3 propagation via `DD_TRACE_PROPAGATION_STYLE`
+directly (see the renamed-style note below).
+
+### Profiling experimental aliases removed
+
+`DD_PROFILING_EXPERIMENTAL_CODEHOTSPOTS_ENABLED`,
+`DD_PROFILING_EXPERIMENTAL_CPU_ENABLED`,
+`DD_PROFILING_EXPERIMENTAL_ENDPOINT_COLLECTION_ENABLED`, and
+`DD_PROFILING_EXPERIMENTAL_TIMELINE_ENABLED` are gone. Use the canonical names
+without the `_EXPERIMENTAL_` segment.
+
+### `DD_TRACE_EXPERIMENTAL_RUNTIME_ID_ENABLED` removed
+
+Use `DD_RUNTIME_METRICS_RUNTIME_ID_ENABLED` instead.
+
+### `"b3 single header"` propagation style renamed to `"b3"`
+
+The historical `'b3'` value used to mean multi-header; per the OTel `b3`
+propagator spec, `'b3'` now means single-header. Multi-header propagation is
+the existing `'b3multi'` value. The legacy `'b3 single header'` string is no
+longer accepted.
+
 ## 4.0 to 5.0
 
 ### Node 16 is no longer supported

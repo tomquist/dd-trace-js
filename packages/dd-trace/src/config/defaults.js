@@ -21,6 +21,37 @@ if (DD_MAJOR >= 6) {
   supportedConfigurations.DD_IAST_SECURITY_CONTROLS_CONFIGURATION[0].internalPropertyName =
     supportedConfigurations.DD_IAST_SECURITY_CONTROLS_CONFIGURATION[0].configurationNames?.[0]
   delete supportedConfigurations.DD_IAST_SECURITY_CONTROLS_CONFIGURATION[0].configurationNames
+
+  // v6 drops a cluster of long-deprecated env-var aliases. v5 keeps accepting them.
+  delete supportedConfigurations.DD_TRACE_EXPERIMENTAL_B3_ENABLED
+
+  /* eslint-disable eslint-rules/eslint-env-aliases */
+  for (const name of [
+    'DD_PROFILING_EXPERIMENTAL_CODEHOTSPOTS_ENABLED',
+    'DD_PROFILING_EXPERIMENTAL_CPU_ENABLED',
+    'DD_PROFILING_EXPERIMENTAL_ENDPOINT_COLLECTION_ENABLED',
+    'DD_PROFILING_EXPERIMENTAL_TIMELINE_ENABLED',
+  ]) {
+    delete supportedConfigurations[name]
+  }
+  /* eslint-enable eslint-rules/eslint-env-aliases */
+  for (const canonical of [
+    'DD_PROFILING_CODEHOTSPOTS_ENABLED',
+    'DD_PROFILING_CPU_ENABLED',
+    'DD_PROFILING_ENDPOINT_COLLECTION_ENABLED',
+    'DD_PROFILING_TIMELINE_ENABLED',
+  ]) {
+    const entry = supportedConfigurations[canonical][0]
+    entry.aliases = entry.aliases?.filter((alias) => !alias.startsWith('DD_PROFILING_EXPERIMENTAL_'))
+    if (entry.aliases?.length === 0) delete entry.aliases
+  }
+
+  delete supportedConfigurations.DD_TRACE_EXPERIMENTAL_RUNTIME_ID_ENABLED
+  const runtimeIdEntry = supportedConfigurations.DD_RUNTIME_METRICS_RUNTIME_ID_ENABLED[0]
+  runtimeIdEntry.aliases = runtimeIdEntry.aliases
+    // eslint-disable-next-line eslint-rules/eslint-env-aliases
+    ?.filter((alias) => alias !== 'DD_TRACE_EXPERIMENTAL_RUNTIME_ID_ENABLED')
+  if (runtimeIdEntry.aliases?.length === 0) delete runtimeIdEntry.aliases
 } else {
   // Default value for DD_TRACE_STARTUP_LOGS is 'false' in older major versions.
   // This is special handled here until a better solution is found.

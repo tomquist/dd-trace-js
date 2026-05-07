@@ -10,12 +10,16 @@ const { channel } = require('dc-polyfill')
 const { assertObjectContains } = require('../../../../../integration-tests/helpers')
 require('../../setup/core')
 const { getConfigFresh } = require('../../helpers/config')
+const { DD_MAJOR } = require('../../../../../version')
 const id = require('../../../src/id')
 const SpanContext = require('../../../src/opentracing/span_context')
 const TraceState = require('../../../src/opentracing/propagation/tracestate')
 const { setBaggageItem, getBaggageItem, getAllBaggageItems, removeAllBaggageItems } = require('../../../src/baggage')
 const { AUTO_KEEP, AUTO_REJECT, USER_KEEP } = require('../../../../../ext/priority')
 const { SAMPLING_MECHANISM_MANUAL } = require('../../../src/constants')
+
+// v5 spells single-header B3 propagation as `'b3 single header'`; v6 reuses `'b3'` for it.
+const B3_SINGLE_STYLE = DD_MAJOR >= 6 ? 'b3' : 'b3 single header'
 
 const injectCh = channel('dd-trace:span:inject')
 const extractCh = channel('dd-trace:span:extract')
@@ -327,7 +331,7 @@ describe('TextMapPropagator', () => {
         },
       })
 
-      config.tracePropagationStyle.inject = ['b3']
+      config.tracePropagationStyle.inject = ['b3multi']
 
       propagator.inject(spanContext, carrier)
 
@@ -354,7 +358,7 @@ describe('TextMapPropagator', () => {
         },
       })
 
-      config.tracePropagationStyle.inject = ['b3']
+      config.tracePropagationStyle.inject = ['b3multi']
 
       propagator.inject(spanContext, carrier)
 
@@ -373,7 +377,7 @@ describe('TextMapPropagator', () => {
         },
       })
 
-      config.tracePropagationStyle.inject = ['b3']
+      config.tracePropagationStyle.inject = ['b3multi']
 
       propagator.inject(spanContext, carrier)
 
@@ -1357,7 +1361,11 @@ describe('TextMapPropagator', () => {
       })
     })
 
-    describe('with B3 propagation from DD_TRACE_PROPAGATION_STYLE', () => {
+    // v5 only: `'b3'` from `DD_TRACE_PROPAGATION_STYLE` historically dispatched to multi-header
+    // extraction. v6 aligns `'b3'` with the OTel single-header form unconditionally, so the
+    // dispatch-by-source distinction is gone and this block has nothing left to assert.
+    const describeOrSkip = DD_MAJOR < 6 ? describe : describe.skip
+    describeOrSkip('with B3 propagation from DD_TRACE_PROPAGATION_STYLE', () => {
       beforeEach(() => {
         config.tracePropagationStyle.extract = ['b3']
         config.getOrigin = sinon.stub().withArgs('tracePropagationStyle.extract').returns('env_var')
@@ -1429,7 +1437,7 @@ describe('TextMapPropagator', () => {
 
     describe('with B3 propagation as a single header', () => {
       beforeEach(() => {
-        config.tracePropagationStyle.extract = ['b3 single header']
+        config.tracePropagationStyle.extract = [B3_SINGLE_STYLE]
 
         delete textMap['x-datadog-trace-id']
         delete textMap['x-datadog-parent-id']
@@ -1574,7 +1582,7 @@ describe('TextMapPropagator', () => {
         sinon.assert.called(log.debug)
         assert.strictEqual(
           log.debug.firstCall.args[0](),
-          `Extract from carrier (b3 single header): {"b3":"${textMap.b3}"}.`
+          `Extract from carrier (${B3_SINGLE_STYLE}): {"b3":"${textMap.b3}"}.`
         )
       })
     })
