@@ -4,6 +4,20 @@ This guide describes the steps to upgrade dd-trace from a major version to the
 next. If you are having any issues related to migrating, please feel free to
 open an issue or contact our [support](https://www.datadoghq.com/support/) team.
 
+## 5.0 to 6.0
+
+### `legacyBaggageEnabled` default is now `false`
+
+The legacy `ot-baggage-*` propagation headers are no longer emitted or
+extracted by default. The W3C `baggage` header remains the default carrier for
+baggage. Set `legacyBaggageEnabled: true` (or `DD_TRACE_LEGACY_BAGGAGE_ENABLED=true`)
+to opt back in if a downstream consumer still depends on the legacy shape.
+
+### `DD_TRACE_STARTUP_LOGS` defaults to `true`
+
+Startup configuration is logged to the console by default. Set
+`DD_TRACE_STARTUP_LOGS=false` to silence it.
+
 ## 4.0 to 5.0
 
 ### Node 16 is no longer supported

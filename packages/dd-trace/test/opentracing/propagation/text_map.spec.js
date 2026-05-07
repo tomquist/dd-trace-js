@@ -16,6 +16,7 @@ const TraceState = require('../../../src/opentracing/propagation/tracestate')
 const { setBaggageItem, getBaggageItem, getAllBaggageItems, removeAllBaggageItems } = require('../../../src/baggage')
 const { AUTO_KEEP, AUTO_REJECT, USER_KEEP } = require('../../../../../ext/priority')
 const { SAMPLING_MECHANISM_MANUAL } = require('../../../src/constants')
+const { DD_MAJOR } = require('../../../../../version')
 
 const injectCh = channel('dd-trace:span:inject')
 const extractCh = channel('dd-trace:span:extract')
@@ -64,6 +65,9 @@ describe('TextMapPropagator', () => {
       '../../telemetry/metrics': telemetryMetrics,
     })
     config = getConfigFresh({ DD_TRACE_X_DATADOG_TAGS_MAX_LENGTH: 512 })
+    // Existing specs pin legacy ot-baggage-* propagation; v6 flipped its default to false,
+    // so opt back in here to keep covering the legacy path on both v5 and v6 backports.
+    config.legacyBaggageEnabled = true
     propagator = new TextMapPropagator(config)
     textMap = {
       'x-datadog-trace-id': '123',
@@ -558,6 +562,7 @@ describe('TextMapPropagator', () => {
           inject: ['datadog', 'tracecontext'],
         },
       })
+      config.legacyBaggageEnabled = true
       propagator = new TextMapPropagator(config)
       const carrier = textMap
       const spanContext = propagator.extract(carrier)
@@ -1920,6 +1925,29 @@ describe('TextMapPropagator', () => {
         assert.strictEqual(extracted.toTraceId(), '123')
         assert.strictEqual(extracted.toSpanId(), '456')
       })
+    })
+  })
+
+  describe('legacyBaggageEnabled default', () => {
+    it('mirrors the major version (true on v5, false on v6)', () => {
+      removeAllBaggageItems()
+      const freshConfig = getConfigFresh({ DD_TRACE_X_DATADOG_TAGS_MAX_LENGTH: 512 })
+      const freshPropagator = new TextMapPropagator(freshConfig)
+
+      assert.strictEqual(freshConfig.legacyBaggageEnabled, DD_MAJOR < 6)
+
+      const injectCarrier = {}
+      freshPropagator.inject(createContext({ baggageItems: { foo: 'bar' } }), injectCarrier)
+
+      const extractCarrier = {
+        'x-datadog-trace-id': '123',
+        'x-datadog-parent-id': '456',
+        'ot-baggage-foo': 'bar',
+      }
+      const extracted = freshPropagator.extract(extractCarrier)
+
+      assert.strictEqual(injectCarrier['ot-baggage-foo'], DD_MAJOR < 6 ? 'bar' : undefined)
+      assert.deepStrictEqual(extracted._baggageItems, DD_MAJOR < 6 ? { foo: 'bar' } : {})
     })
   })
 })
