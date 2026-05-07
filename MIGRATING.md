@@ -4,6 +4,27 @@ This guide describes the steps to upgrade dd-trace from a major version to the
 next. If you are having any issues related to migrating, please feel free to
 open an issue or contact our [support](https://www.datadoghq.com/support/) team.
 
+## 5.0 to 6.0
+
+### `experimental.appsec` configuration removed
+
+The `experimental.appsec.*` programmatic aliases (and
+`experimental.appsec.standalone.enabled`) have been removed. Use the canonical
+top-level `appsec.*` fields, and `apmTracingEnabled` (or
+`DD_APM_TRACING_ENABLED`) to control standalone ASM mode.
+
+### `plugins: boolean` option removed
+
+The `plugins` option on `tracer.init({...})` is gone. To disable a specific
+plugin, set the corresponding `DD_TRACE_<NAME>_ENABLED=false` environment
+variable (for example, `DD_TRACE_HTTP_ENABLED=false`).
+
+### `ingestion` option removed
+
+The `ingestion: { sampleRate, rateLimit }` wrapper has been removed. Set
+`sampleRate` and `rateLimit` directly on the top-level `TracerOptions` object,
+or use `DD_TRACE_SAMPLE_RATE` / `DD_TRACE_RATE_LIMIT`.
+
 ## 4.0 to 5.0
 
 ### Node 16 is no longer supported

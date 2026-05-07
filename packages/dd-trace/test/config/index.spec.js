@@ -1540,7 +1540,7 @@ describe('Config', () => {
       peerServiceMapping: {
         d: 'dd',
       },
-      plugins: false,
+      ...DD_MAJOR < 6 && { plugins: false },
       port: 6218,
       protocolVersion: '0.5',
       rateLimit: 1000,
@@ -1643,7 +1643,7 @@ describe('Config', () => {
       logger,
       middlewareTracingEnabled: false,
       peerServiceMapping: { d: 'dd' },
-      plugins: false,
+      plugins: DD_MAJOR >= 6,
       port: 6218,
       protocolVersion: '0.5',
       remoteConfig: {
@@ -1776,7 +1776,7 @@ describe('Config', () => {
       { name: 'DD_LLMOBS_ML_APP', value: 'myMlApp', origin: 'code' },
       { name: 'DD_TRACE_MIDDLEWARE_TRACING_ENABLED', value: false, origin: 'code' },
       { name: 'DD_TRACE_PEER_SERVICE_MAPPING', value: 'd:dd', origin: 'code' },
-      { name: 'plugins', value: false, origin: 'code' },
+      DD_MAJOR < 6 && { name: 'plugins', value: false, origin: 'code' },
       { name: 'DD_TRACE_AGENT_PORT', value: 6218, origin: 'code' },
       { name: 'DD_TRACE_AGENT_PROTOCOL_VERSION', value: '0.5', origin: 'code' },
       { name: 'DD_REMOTE_CONFIG_POLL_INTERVAL_SECONDS', value: 42, origin: 'code' },
@@ -1817,7 +1817,7 @@ describe('Config', () => {
       tags,
       flushInterval: 5000,
       flushMinSpans: 500,
-      plugins: false,
+      ...DD_MAJOR < 6 && { plugins: false },
     })
 
     assert.strictEqual(config.url.toString(), 'https://agent2:7777/')
@@ -1833,7 +1833,7 @@ describe('Config', () => {
     assertObjectContains(config, {
       flushInterval: 5000,
       flushMinSpans: 500,
-      plugins: false,
+      plugins: DD_MAJOR >= 6,
     })
   })
 
@@ -2269,7 +2269,7 @@ describe('Config', () => {
     assert.strictEqual(config.url.toString(), 'https://agent2:6218/')
   })
 
-  it('should give priority to non-experimental options', () => {
+  ;(DD_MAJOR < 6 ? it : it.skip)('should give priority to non-experimental options', () => {
     const config = getConfig({
       appsec: {
         apiSecurity: {
@@ -3314,10 +3314,19 @@ describe('Config', () => {
   })
 
   context('standalone', () => {
-    it('should disable apm tracing with legacy DD_EXPERIMENTAL_APPSEC_STANDALONE_ENABLED', () => {
+    const itLegacyStandalone = DD_MAJOR < 6 ? it : it.skip
+
+    itLegacyStandalone('should disable apm tracing with legacy DD_EXPERIMENTAL_APPSEC_STANDALONE_ENABLED', () => {
       process.env.DD_EXPERIMENTAL_APPSEC_STANDALONE_ENABLED = '1'
 
       const config = getConfig()
+      assert.strictEqual(config.apmTracingEnabled, false)
+    })
+
+    itLegacyStandalone('should disable apm tracing with legacy experimental.appsec.standalone.enabled option', () => {
+      process.env.DD_EXPERIMENTAL_APPSEC_STANDALONE_ENABLED = '0'
+
+      const config = getConfig({ experimental: { appsec: { standalone: { enabled: true } } } })
       assert.strictEqual(config.apmTracingEnabled, false)
     })
 
@@ -3329,19 +3338,12 @@ describe('Config', () => {
       assert.strictEqual(config.apmTracingEnabled, true)
     })
 
-    it('should disable apm tracing with legacy experimental.appsec.standalone.enabled option', () => {
-      process.env.DD_EXPERIMENTAL_APPSEC_STANDALONE_ENABLED = '0'
-
-      const config = getConfig({ experimental: { appsec: { standalone: { enabled: true } } } })
-      assert.strictEqual(config.apmTracingEnabled, false)
-    })
-
     it('should win apmTracingEnabled option', () => {
       process.env.DD_EXPERIMENTAL_APPSEC_STANDALONE_ENABLED = 'true'
 
       const config = getConfig({
         apmTracingEnabled: false,
-        experimental: { appsec: { standalone: { enabled: true } } },
+        ...DD_MAJOR < 6 && { experimental: { appsec: { standalone: { enabled: true } } } },
       })
       assert.strictEqual(config.apmTracingEnabled, false)
     })

@@ -21,6 +21,21 @@ if (DD_MAJOR >= 6) {
   supportedConfigurations.DD_IAST_SECURITY_CONTROLS_CONFIGURATION[0].internalPropertyName =
     supportedConfigurations.DD_IAST_SECURITY_CONTROLS_CONFIGURATION[0].configurationNames?.[0]
   delete supportedConfigurations.DD_IAST_SECURITY_CONTROLS_CONFIGURATION[0].configurationNames
+
+  // Drop long-deprecated programmatic config aliases (`experimental.appsec.*`, `ingestion.*`) and
+  // the standalone-ASM env entry. v5 keeps accepting them; v6 strips them so `#applyOptions`
+  // logs an "Unknown option" warning when callers pass them.
+  for (const entries of Object.values(supportedConfigurations)) {
+    for (const entry of entries) {
+      if (Array.isArray(entry.configurationNames)) {
+        entry.configurationNames = entry.configurationNames.filter(
+          (name) => !name.startsWith('experimental.appsec.') && !name.startsWith('ingestion.')
+        )
+        if (entry.configurationNames.length === 0) delete entry.configurationNames
+      }
+    }
+  }
+  delete supportedConfigurations.DD_EXPERIMENTAL_APPSEC_STANDALONE_ENABLED
 } else {
   // Default value for DD_TRACE_STARTUP_LOGS is 'false' in older major versions.
   // This is special handled here until a better solution is found.
@@ -179,6 +194,13 @@ const optionsTable = {
   plugins: {
     property: 'plugins',
   },
+}
+
+if (DD_MAJOR >= 6) {
+  // The `plugins` programmatic option is deprecated; v5 still accepts it, v6 routes through
+  // `DD_TRACE_<INTEGRATION>_ENABLED` env vars only. Removing the `optionsTable` row makes
+  // `#applyOptions` warn instead of silently consuming the boolean.
+  delete optionsTable.plugins
 }
 
 const parser = (value, optionName, source) => {
